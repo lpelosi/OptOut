@@ -1,0 +1,27 @@
+{
+  "name": "optout-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "OptOut API — track money not spent, allocate savings into goal jars.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --env-file=.env --watch src/index.js",
+    "migrate": "node --env-file=.env src/migrate.js",
+    "test": "node --env-file=.env --test test/"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "express": "^4.21.2",
+    "express-rate-limit": "^8.4.0",
+    "google-auth-library": "^9.15.0",
+    "jose": "^6.2.2",
+    "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^8.0.10",
+    "pg": "^8.13.1"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  }
+}

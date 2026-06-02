@@ -1,0 +1,23 @@
+# Dependencies
+**/node_modules/
+
+# Env / secrets
+**/.env
+*.env
+
+# Expo / build
+app/.expo/
+app/dist/
+app/web-build/
+expo-env.d.ts
+
+# Logs
+*.log
+
+# OS / editor
+.DS_Store
+.idea/
+
+# Local tooling state (not part of the project)
+.remember/
+.claude/
