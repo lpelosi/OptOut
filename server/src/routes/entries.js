@@ -3,6 +3,31 @@ import { query } from '../db.js';
 
 const router = Router();
 
+// Reject references to a category or jar the caller doesn't own (prevents IDOR —
+// e.g. tagging an entry to someone else's jar). Built-in categories (user_id IS NULL)
+// are shared and allowed. Throws an error with statusCode 400 on a bad reference.
+async function assertOwnedRefs(userId, { categoryId, jarId }) {
+  if (categoryId) {
+    const r = await query(
+      `SELECT 1 FROM categories WHERE id = $1 AND (user_id IS NULL OR user_id = $2)`,
+      [categoryId, userId]
+    );
+    if (!r.rows.length) {
+      const e = new Error('category not found');
+      e.statusCode = 400;
+      throw e;
+    }
+  }
+  if (jarId) {
+    const r = await query(`SELECT 1 FROM jars WHERE id = $1 AND user_id = $2`, [jarId, userId]);
+    if (!r.rows.length) {
+      const e = new Error('jar not found');
+      e.statusCode = 400;
+      throw e;
+    }
+  }
+}
+
 const SELECT = `
   SELECT e.id, e.amount, e.note, e.occurred_at, e.created_at,
          e.category_id, c.name AS category_name, c.icon AS category_icon, c.color AS category_color,
@@ -44,6 +69,7 @@ router.post('/', async (req, res, next) => {
     if (!Number.isFinite(amt) || amt < 0) {
       return res.status(400).json({ success: false, message: 'amount must be a non-negative number' });
     }
+    await assertOwnedRefs(req.user.id, { categoryId, jarId });
     const ins = await query(
       `INSERT INTO entries (user_id, category_id, jar_id, amount, note, occurred_at)
        VALUES ($1, $2, $3, $4, $5, COALESCE($6, now())) RETURNING id`,
@@ -52,6 +78,7 @@ router.post('/', async (req, res, next) => {
     const { rows } = await query(`${SELECT} WHERE e.id = $1`, [ins.rows[0].id]);
     res.status(201).json({ success: true, entry: rows[0] });
   } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ success: false, message: err.message });
     next(err);
   }
 });
@@ -71,6 +98,7 @@ router.patch('/:id', async (req, res, next) => {
       }
     }
     if (!sets.length) return res.status(400).json({ success: false, message: 'No fields to update' });
+    await assertOwnedRefs(req.user.id, { categoryId: body.categoryId, jarId: body.jarId });
     const { rows } = await query(
       `UPDATE entries SET ${sets.join(', ')} WHERE id = $1 AND user_id = $2 RETURNING id`,
       params
@@ -79,6 +107,7 @@ router.patch('/:id', async (req, res, next) => {
     const full = await query(`${SELECT} WHERE e.id = $1`, [rows[0].id]);
     res.json({ success: true, entry: full.rows[0] });
   } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ success: false, message: err.message });
     next(err);
   }
 });

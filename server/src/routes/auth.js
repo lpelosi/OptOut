@@ -43,8 +43,11 @@ const codeLimiter = rateLimit({
   message: { success: false, message: 'Too many code requests. Try again later.' },
 });
 
-// Find a user by provider id or email, else create one. Links provider id if missing.
-async function findOrCreateUser({ provider, sub, email, displayName }) {
+// Find a user by provider id or email, else create one. A provider `sub` is only
+// auto-linked to a pre-existing account when the provider asserts the email is verified —
+// otherwise an attacker controlling an unverified-email provider account could take over
+// an existing OptOut account that shares that address.
+async function findOrCreateUser({ provider, sub, email, emailVerified, displayName }) {
   const col = provider === 'apple' ? 'apple_user_id' : 'google_user_id';
   let res = await query(`SELECT * FROM users WHERE ${col} = $1 AND is_active = true`, [sub]);
   if (res.rows.length) return res.rows[0];
@@ -52,6 +55,11 @@ async function findOrCreateUser({ provider, sub, email, displayName }) {
   if (email) {
     res = await query(`SELECT * FROM users WHERE email = $1 AND is_active = true`, [email]);
     if (res.rows.length) {
+      if (!emailVerified) {
+        const e = new Error('An account already uses this email. Sign in with your original method first, then link this provider.');
+        e.statusCode = 409;
+        throw e;
+      }
       const updated = await query(
         `UPDATE users SET ${col} = $1, updated_at = now() WHERE id = $2 RETURNING *`,
         [sub, res.rows[0].id]
@@ -62,7 +70,7 @@ async function findOrCreateUser({ provider, sub, email, displayName }) {
   const name = displayName?.trim() || (email ? email.split('@')[0] : 'Saver');
   const created = await query(
     `INSERT INTO users (email, display_name, ${col}) VALUES ($1, $2, $3) RETURNING *`,
-    [email || `${sub}@apple.local`, name, sub]
+    [email || `${sub}@${provider}.local`, name, sub]
   );
   return created.rows[0];
 }
@@ -82,10 +90,12 @@ router.post('/apple', async (req, res, next) => {
       provider: 'apple',
       sub: info.sub,
       email: info.email,
+      emailVerified: info.emailVerified,
       displayName: nameToString(fullName),
     });
     res.json({ success: true, ...(await issueTokens(user)) });
   } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ success: false, message: err.message });
     next(err);
   }
 });
@@ -101,9 +111,15 @@ router.post('/google', async (req, res, next) => {
     } catch {
       return res.status(401).json({ success: false, message: 'Invalid Google token' });
     }
-    const user = await findOrCreateUser({ provider: 'google', sub: info.sub, email: info.email });
+    const user = await findOrCreateUser({
+      provider: 'google',
+      sub: info.sub,
+      email: info.email,
+      emailVerified: info.emailVerified,
+    });
     res.json({ success: true, ...(await issueTokens(user)) });
   } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ success: false, message: err.message });
     next(err);
   }
 });
