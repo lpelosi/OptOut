@@ -10,6 +10,33 @@ import { spacing, useColors } from '@/theme';
 
 WebBrowser.maybeCompleteAuthSession();
 
+// Google client ids (from Google Cloud console). Empty until configured.
+const GOOGLE_IDS = {
+  ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+  android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+  web: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+};
+// The id the auth request needs for the *current* platform. If absent, Google sign-in
+// is not configured and we must not render the button (the hook throws without it).
+const googleClientForPlatform = Platform.select({
+  ios: GOOGLE_IDS.ios,
+  android: GOOGLE_IDS.android,
+  default: GOOGLE_IDS.web,
+});
+
+// Isolated so useIdTokenAuthRequest only runs when Google is actually configured.
+function GoogleButton({ onToken }: { onToken: (idToken: string) => void }) {
+  const [request, response, promptGoogle] = Google.useIdTokenAuthRequest({
+    iosClientId: GOOGLE_IDS.ios,
+    androidClientId: GOOGLE_IDS.android,
+    webClientId: GOOGLE_IDS.web,
+  });
+  useEffect(() => {
+    if (response?.type === 'success' && response.params.id_token) onToken(response.params.id_token);
+  }, [response]);
+  return <Button label="Continue with Google" variant="ghost" disabled={!request} onPress={() => promptGoogle()} />;
+}
+
 export default function SignIn() {
   const c = useColors();
   const { signInWithApple, signInWithGoogle, requestMagicCode, verifyMagicCode } = useAuth();
@@ -17,17 +44,6 @@ export default function SignIn() {
   const [code, setCode] = useState('');
   const [stage, setStage] = useState<'email' | 'code'>('email');
   const [busy, setBusy] = useState(false);
-
-  const [request, response, promptGoogle] = Google.useIdTokenAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-  });
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const idToken = response.params.id_token;
-      if (idToken) signInWithGoogle(idToken).catch((e) => Alert.alert('Sign-in failed', e.message));
-    }
-  }, [response]);
 
   const wrap = (fn: () => Promise<void>) => async () => {
     setBusy(true);
@@ -102,7 +118,9 @@ export default function SignIn() {
             onPress={onApple}
           />
         )}
-        <Button label="Continue with Google" variant="ghost" disabled={!request} onPress={() => promptGoogle()} />
+        {googleClientForPlatform ? (
+          <GoogleButton onToken={(idToken) => signInWithGoogle(idToken).catch((e) => Alert.alert('Sign-in failed', e.message))} />
+        ) : null}
       </View>
     </SafeAreaView>
   );
