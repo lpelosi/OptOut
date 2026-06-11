@@ -28,6 +28,10 @@ export const config = {
 
   magicCodeTtlMin: Number(process.env.MAGIC_CODE_TTL_MIN) || 10,
 
+  // Receipt scanning via Claude vision. Unset = feature disabled (endpoint 503s).
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+  anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-opus-4-8',
+
   smtp: {
     host: process.env.SMTP_HOST || '',
     port: Number(process.env.SMTP_PORT) || 587,

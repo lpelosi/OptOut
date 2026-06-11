@@ -3,13 +3,10 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { AuthProvider, useAuth } from '@/auth/AuthContext';
+import { queryClient, persister } from '@/api/query';
 import { useColors } from '@/theme';
-
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
-});
 
 // Redirects between the auth stack and the app based on session state.
 function Gate() {
@@ -38,6 +35,7 @@ function Gate() {
       <Stack.Screen name="(auth)/sign-in" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="add-entry" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="scan-receipt" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
     </Stack>
   );
 }
@@ -45,12 +43,19 @@ function Gate() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 * 14 }}
+        onSuccess={() => {
+          // Replay any writes that were queued while offline / before the last quit.
+          queryClient.resumePausedMutations();
+        }}
+      >
         <AuthProvider>
           <StatusBar style="auto" />
           <Gate />
         </AuthProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </SafeAreaProvider>
   );
 }

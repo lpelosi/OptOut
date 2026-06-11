@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <g transform="translate(512,512) scale(0.62) translate(-512,-512)">
+    <g transform="translate(8,18)">
+      <path d="M214 556 q-58 -10 -52 -58 q4 -38 40 -30 q26 6 18 34" fill="none" stroke="#4F8A8B" stroke-width="26" stroke-linecap="round"/>
+      <rect x="360" y="720" width="78" height="96" rx="26" fill="#3F7273"/>
+      <rect x="612" y="720" width="78" height="96" rx="26" fill="#3F7273"/>
+      <path d="M372 388 q-22 -104 70 -86 q40 8 36 70 q-54 -8 -106 16 z" fill="#3F7273"/>
+      <ellipse cx="500" cy="560" rx="292" ry="226" fill="#4F8A8B"/>
+      <rect x="430" y="740" width="78" height="96" rx="26" fill="#4F8A8B"/>
+      <rect x="540" y="740" width="78" height="96" rx="26" fill="#4F8A8B"/>
+      <ellipse cx="760" cy="566" rx="78" ry="96" fill="#5EA1A2"/>
+      <ellipse cx="744" cy="540" rx="15" ry="22" fill="#0E1116"/>
+      <ellipse cx="744" cy="592" rx="15" ry="22" fill="#0E1116"/>
+      <circle cx="624" cy="486" r="22" fill="#0E1116"/>
+      <rect x="372" y="372" width="150" height="34" rx="17" transform="rotate(-12 447 389)" fill="#0E1116"/>
+      <circle cx="470" cy="232" r="86" fill="#8FCFD0"/>
+      <circle cx="470" cy="232" r="86" fill="none" stroke="#4F8A8B" stroke-width="8"/>
+      <text x="470" y="232" font-family="Helvetica, Arial, sans-serif" font-size="104" font-weight="700" fill="#1F4E4F" text-anchor="middle" dominant-baseline="central">$</text>
+    </g>
+  </g>
+</svg>

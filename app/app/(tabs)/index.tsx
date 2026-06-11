@@ -7,9 +7,15 @@ import { money, radius, spacing, useColors } from '@/theme';
 
 function EntryRow({ e }: { e: Entry }) {
   const c = useColors();
+  const router = useRouter();
   const date = new Date(e.occurred_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const spent = e.direction === 'spent';
+  const meta = [date, e.note, e.jar_name, e.pending ? 'syncing…' : null].filter(Boolean).join(' · ');
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, gap: spacing.md }}>
+    <Pressable
+      onPress={() => router.push({ pathname: '/add-entry', params: { id: e.id } })}
+      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, gap: spacing.md, opacity: e.pending ? 0.55 : pressed ? 0.6 : 1 })}
+    >
       <View
         style={{
           width: 40,
@@ -20,16 +26,19 @@ function EntryRow({ e }: { e: Entry }) {
           justifyContent: 'center',
         }}
       >
-        <Text style={{ fontSize: 16 }}>💸</Text>
+        <Text style={{ fontSize: 16 }}>{spent ? '🧾' : '💸'}</Text>
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ color: c.text, fontSize: 16, fontWeight: '600' }}>{e.category_name ?? 'Opt-out'}</Text>
+        <Text style={{ color: c.text, fontSize: 16, fontWeight: '600' }}>{e.category_name ?? (spent ? 'Expense' : 'Opt-out')}</Text>
         <Text style={{ color: c.textMuted, fontSize: 13 }} numberOfLines={1}>
-          {[date, e.note, e.jar_name].filter(Boolean).join(' · ')}
+          {meta}
         </Text>
       </View>
-      <Text style={{ color: c.positive, fontSize: 17, fontWeight: '700' }}>+{money(e.amount)}</Text>
-    </View>
+      <Text style={{ color: spent ? c.danger : c.positive, fontSize: 17, fontWeight: '700' }}>
+        {spent ? '−' : '+'}
+        {money(e.amount)}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -65,8 +74,8 @@ export default function Dashboard() {
               </Text>
               <View style={{ flexDirection: 'row', gap: spacing.lg }}>
                 <Stat label="This month" value={money(summary.data?.month ?? 0)} c={c} />
-                <Stat label="This week" value={money(summary.data?.week ?? 0)} c={c} />
-                <Stat label="Opt-outs" value={String(summary.data?.lifetime_count ?? 0)} c={c} />
+                <Stat label="Spent" value={money(summary.data?.spent ?? 0)} c={c} />
+                <Stat label="Net" value={money(summary.data?.net ?? 0)} c={c} />
               </View>
             </Card>
             <Text style={{ color: c.text, fontSize: 20, fontWeight: '700' }}>Recent</Text>
@@ -77,27 +86,46 @@ export default function Dashboard() {
         ListEmptyComponent={!entries.isLoading ? <Empty text="No opt-outs yet. Tap + to log the first dollar you didn't spend." /> : null}
       />
 
-      <Pressable
-        onPress={() => router.push('/add-entry')}
-        style={{
-          position: 'absolute',
-          right: spacing.lg,
-          bottom: spacing.xl,
-          backgroundColor: c.accent,
-          width: 60,
-          height: 60,
-          borderRadius: 30,
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: '#000',
-          shadowOpacity: 0.25,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 6,
-        }}
-      >
-        <Text style={{ color: '#fff', fontSize: 32, marginTop: -2 }}>+</Text>
-      </Pressable>
+      <View style={{ position: 'absolute', right: spacing.lg, bottom: spacing.xl, alignItems: 'center', gap: spacing.md }}>
+        <Pressable
+          onPress={() => router.push('/scan-receipt')}
+          style={{
+            backgroundColor: c.card,
+            borderWidth: 1,
+            borderColor: c.border,
+            width: 52,
+            height: 52,
+            borderRadius: 26,
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOpacity: 0.2,
+            shadowRadius: 6,
+            shadowOffset: { width: 0, height: 3 },
+            elevation: 5,
+          }}
+        >
+          <Text style={{ fontSize: 22 }}>🧾</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push('/add-entry')}
+          style={{
+            backgroundColor: c.accent,
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOpacity: 0.25,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 6,
+          }}
+        >
+          <Text style={{ color: '#fff', fontSize: 32, marginTop: -2 }}>+</Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }

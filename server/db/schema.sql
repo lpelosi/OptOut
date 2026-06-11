@@ -45,10 +45,18 @@ CREATE TABLE IF NOT EXISTS entries (
     category_id     uuid REFERENCES categories(id) ON DELETE SET NULL,
     jar_id          uuid REFERENCES jars(id) ON DELETE SET NULL,
     amount          numeric(10,2) NOT NULL CHECK (amount >= 0),
+    -- 'saved' = money opted out of spending; 'spent' = money actually spent (e.g. scanned receipt)
+    direction       text NOT NULL DEFAULT 'saved' CHECK (direction IN ('saved', 'spent')),
     note            text,
     occurred_at     timestamptz NOT NULL DEFAULT now(),
     created_at      timestamptz NOT NULL DEFAULT now()
 );
+-- Idempotent add for databases created before `direction` existed.
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS direction text NOT NULL DEFAULT 'saved';
+DO $$ BEGIN
+    ALTER TABLE entries ADD CONSTRAINT entries_direction_check CHECK (direction IN ('saved', 'spent'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_entries_user_occurred ON entries(user_id, occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_entries_jar ON entries(jar_id);
 CREATE INDEX IF NOT EXISTS idx_entries_category ON entries(category_id);

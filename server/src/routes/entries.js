@@ -29,7 +29,7 @@ async function assertOwnedRefs(userId, { categoryId, jarId }) {
 }
 
 const SELECT = `
-  SELECT e.id, e.amount, e.note, e.occurred_at, e.created_at,
+  SELECT e.id, e.amount, e.direction, e.note, e.occurred_at, e.created_at,
          e.category_id, c.name AS category_name, c.icon AS category_icon, c.color AS category_color,
          e.jar_id, j.name AS jar_name
     FROM entries e
@@ -64,16 +64,17 @@ router.get('/', async (req, res, next) => {
 // POST /entries
 router.post('/', async (req, res, next) => {
   try {
-    const { amount, categoryId, note, occurredAt, jarId } = req.body || {};
+    const { amount, categoryId, note, occurredAt, jarId, direction } = req.body || {};
     const amt = Number(amount);
     if (!Number.isFinite(amt) || amt < 0) {
       return res.status(400).json({ success: false, message: 'amount must be a non-negative number' });
     }
+    const dir = direction === 'spent' ? 'spent' : 'saved';
     await assertOwnedRefs(req.user.id, { categoryId, jarId });
     const ins = await query(
-      `INSERT INTO entries (user_id, category_id, jar_id, amount, note, occurred_at)
-       VALUES ($1, $2, $3, $4, $5, COALESCE($6, now())) RETURNING id`,
-      [req.user.id, categoryId || null, jarId || null, amt, note?.trim() || null, occurredAt || null]
+      `INSERT INTO entries (user_id, category_id, jar_id, amount, direction, note, occurred_at)
+       VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, now())) RETURNING id`,
+      [req.user.id, categoryId || null, jarId || null, amt, dir, note?.trim() || null, occurredAt || null]
     );
     const { rows } = await query(`${SELECT} WHERE e.id = $1`, [ins.rows[0].id]);
     res.status(201).json({ success: true, entry: rows[0] });
@@ -85,10 +86,13 @@ router.post('/', async (req, res, next) => {
 
 // PATCH /entries/:id — only fields present in the body are changed.
 // categoryId/jarId may be explicitly set to null to clear them.
-const PATCHABLE = { amount: 'amount', categoryId: 'category_id', jarId: 'jar_id', note: 'note', occurredAt: 'occurred_at' };
+const PATCHABLE = { amount: 'amount', categoryId: 'category_id', jarId: 'jar_id', note: 'note', occurredAt: 'occurred_at', direction: 'direction' };
 router.patch('/:id', async (req, res, next) => {
   try {
     const body = req.body || {};
+    if ('direction' in body && body.direction !== 'saved' && body.direction !== 'spent') {
+      return res.status(400).json({ success: false, message: "direction must be 'saved' or 'spent'" });
+    }
     const sets = [];
     const params = [req.params.id, req.user.id];
     for (const [key, col] of Object.entries(PATCHABLE)) {

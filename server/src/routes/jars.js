@@ -8,7 +8,7 @@ const SELECT = `
   SELECT j.id, j.name, j.icon, j.color, j.target_amount, j.created_at, j.completed_at,
          COALESCE(SUM(e.amount), 0) AS balance
     FROM jars j
-    LEFT JOIN entries e ON e.jar_id = j.id AND e.user_id = j.user_id
+    LEFT JOIN entries e ON e.jar_id = j.id AND e.user_id = j.user_id AND e.direction = 'saved'
    WHERE j.user_id = $1`;
 
 const withProgress = (j) => ({

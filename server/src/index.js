@@ -8,11 +8,13 @@ import categoriesRoutes from './routes/categories.js';
 import entriesRoutes from './routes/entries.js';
 import jarsRoutes from './routes/jars.js';
 import statsRoutes from './routes/stats.js';
+import receiptsRoutes from './routes/receipts.js';
 
 const app = express();
 // Behind a loopback reverse proxy (Apache/nginx) — trust it so req.ip is the real client.
 app.set('trust proxy', 'loopback');
-app.use(express.json({ limit: '1mb' }));
+// Limit accommodates base64 receipt photos (the app downsizes before upload).
+app.use(express.json({ limit: '12mb' }));
 
 // CORS — allow configured origins (Expo web/dev). Native app sends no Origin.
 app.use((req, res, next) => {
@@ -58,6 +60,7 @@ app.use('/api/categories', requireAuth, categoriesRoutes);
 app.use('/api/entries', requireAuth, entriesRoutes);
 app.use('/api/jars', requireAuth, jarsRoutes);
 app.use('/api/stats', requireAuth, statsRoutes);
+app.use('/api/receipts', requireAuth, receiptsRoutes);
 
 app.use((_req, res) => res.status(404).json({ success: false, message: 'Not found' }));
 
